@@ -1,0 +1,22 @@
+Checking for updates to Webi ...
+    Updating C:\Users\Panda 2.0\.local\bin\webi-pwsh.ps1
+    Downloading from
+      https://webi.ms/packages/webi/webi-pwsh.ps1
+      Saved C:\Users\Panda 2.0\.local\bin\webi-pwsh.ps1
+
+***********************************
+*      IMPORTANT -- READ ME       *
+*  (run the PATH commands below)  *
+***********************************
+
+
+Copy, paste, and run the appropriate commands to update your PATH:
+
+cmd.exe:
+    (close and reopen the terminal)
+
+PowerShell:
+    $UserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $MachinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+    $Env:Path = "${UserPath};${MachinePath}"
+    (or close and reopen the terminal)
