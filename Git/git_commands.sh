@@ -182,8 +182,11 @@ cat .gitignore          # add files to ignore
         #  a .gitignore file can only affect its own directory and everything below it:
         node_modules/ -> Directory
         /config.local.json -> current location file
-
-
+        *.txt -> wildcard to ignore files with .txt suffix
+        !/important.txt -> don't ignore file
+                # Order matters, if wildcard and negation were reversed then negation would be overridden
+                
+                
 # ===================================================================
 # Notes: 
 # ===================================================================
