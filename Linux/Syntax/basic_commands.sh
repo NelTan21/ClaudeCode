@@ -195,3 +195,19 @@ bash alias.sh    # runs it in a child process -- gs alias is gone the instant th
 source alias.sh   # runs it in YOUR shell -- gs alias now works from this point on, in this terminal
     # - source alias.sh is functionally identical to having pasted the contents of alias.sh straight into ~/.bashrc 
 echo 'source ~/alias.sh' >> ~/.bashrc # add ~/alias.sh into ~/.bashrc    
+# Create an archive
+tar -cvf archive.tar files/or/dirs
+tar -czvf archive.tar.gz files/or/dirs    # gzip compressed
+# Extract an archive
+tar -xvf archive.tar
+tar -xzvf archive.tar.gz                  # gzip compressed
+tar -xzvf archive.tar.gz -C /target/dir   # extract to specific directory
+# List contents without extracting
+tar -tvf archive.tar.gz
+# Flags:
+  - c = create, x = extract, t = list/table
+  - z = gzip (.tar.gz/.tgz); use j for bzip2 (.tar.bz2), J for xz (.tar.xz)
+  - v = verbose (show files as processed)
+  - f = filename follows (almost always needed, goes last before the filename)
+# If you're pulling a .tar.gz down and just want a quick "unpack this" command, it's:
+  tar -xzvf filename.tar.gz
