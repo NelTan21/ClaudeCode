@@ -229,3 +229,25 @@ system: /etc/gitconfig, a file that configures Git for all users on the system
 global: ~/.gitconfig, a file that configures Git for all projects of a user
 local: .git/config, a file that configures Git for a specific project
 worktree: .git/config.worktree, a file that configures Git for part of a project
+
+# ===================================================================
+# WSL Push Fix: HTTP/2 framing errors & MTU
+# ===================================================================
+# Root cause: git's HTTP/2 transport gets disrupted mid-push, often due to
+# corporate network/proxy/antivirus interference, or WSL2's default MTU
+# not matching the host's. Fix: force HTTP/1.1, raise the push buffer,
+# and clamp the WSL interface MTU.
+
+git config --global http.version HTTP/1.1
+git config --global http.postBuffer 524288000
+
+# Clamp eth0 MTU to 1400 on every WSL boot -- add to /etc/wsl.conf:
+#   [boot]
+#   systemd=true
+#   command="ip link set dev eth0 mtu 1400"
+
+# Verification:
+ip link show eth0 | grep mtu             # confirm the interface picked up mtu 1400
+git config --get http.version            # confirm HTTP/1.1 is set
+git config --get http.postBuffer         # confirm postBuffer is set
+git fetch origin && git diff main origin/main   # confirm local == remote after a push
