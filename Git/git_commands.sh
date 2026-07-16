@@ -24,7 +24,7 @@ sudo apt-get install language-pack-en # This allows git to display messages in E
                                 LC_ALL=en_US.UTF-8
         export LANGUAGE=en # This sets the system language to English for Git commands
 curl -sS https://webi.sh/gh | sh # Install GitHub
-
+wsl.exe -- bash -lc 'gh auth status 2>&1'       # check the permissions of your wsl.exe terminal
 # ===================================================================
 # Help & Manual
 # ===================================================================
@@ -183,7 +183,7 @@ cat .gitignore          # add files to ignore
         node_modules/ -> Directory
         /config.local.json -> current location file
         *.txt -> wildcard to ignore files with .txt suffix
-        !/important.txt -> don't ignore file
+        !/important.txt -> dont ignore file
                 # Order matters, if wildcard and negation were reversed then negation would be overridden
 
 # WHAT TO IGNORE
@@ -197,8 +197,8 @@ cat .gitignore          # add files to ignore
 # ===================================================================
 Hash:
 - SHA, Git uses a cryptographic hash function called SHA-1 to generate commit hashes. 
-- We won't go into the details of how SHA-1 works in this course.
-- but it's important to know because you might also hear commit hashes referred to as "SHAs".
+- We wont go into the details of how SHA-1 works in this course.
+- but its important to know because you might also hear commit hashes referred to as "SHAs".
 
 # What affects the hash of a commit?
 The hash of a commit is affected by the following factors:
@@ -231,23 +231,69 @@ local: .git/config, a file that configures Git for a specific project
 worktree: .git/config.worktree, a file that configures Git for part of a project
 
 # ===================================================================
-# WSL Push Fix: HTTP/2 framing errors & MTU
+# Claude Actions: 
 # ===================================================================
-# Root cause: git's HTTP/2 transport gets disrupted mid-push, often due to
-# corporate network/proxy/antivirus interference, or WSL2's default MTU
-# not matching the host's. Fix: force HTTP/1.1, raise the push buffer,
-# and clamp the WSL interface MTU.
+wsl.exe -- bash -lc 'cd "/mnt/d/Claude/Claude Code" && git diff -- CLAUDE.md | head -50; echo "---autocrlf---"; git config      
+   --get core.autocrlf; git config --local --get core.autocrlf'
+   # Check what differs in CLAUDE.md and autocrlf settings
+ git config --local user.name "NelTan21" && git config --local user.email "nel.tan21@gmail.com" && git status
+   # Set local git identity to match WSL config
+   git commit -m "<dollar_sign>(cat << 'EOF' Add CLAUDE.md project instructions)" && git log --oneline -3 
+   # Commit CLAUDE.md and show recent log
 
-git config --global http.version HTTP/1.1
-git config --global http.postBuffer 524288000
+# The root cause is the curl 16 or HTTP2 framing layer error
+        # a known issue where gits HTTP/2 transport gets disrupted mid-push 
+        # (often corporate network/proxy/antivirus interference). 
+        # the fix is to force HTTP/1.1 for git and increase the push buffer      
+                git config --global http.version HTTP/1.1
+                git config --global http.postBuffer 524288000
 
-# Clamp eth0 MTU to 1400 on every WSL boot -- add to /etc/wsl.conf:
-#   [boot]
-#   systemd=true
-#   command="ip link set dev eth0 mtu 1400"
+# ===================================================================
+###### fix the WSL MTU issue for future pushes ######
+wsl.exe -- bash -lc "ip link show eth0" | grep mtu; 
+echo "---host mtu (route to github)---"; 
+ip route get 140.82.112.3 2>&1; 
+cat /etc/wsl.conf 2>&1; 
+echo "---resolv---"; 
+cat /etc/resolv.conf 2>&1 | head -5
+# Tests after the fix for WSL MTU issue for future pushes
+wsl.exe -u root -- bash -c 'whoami; id'   #Confirm root access via wsl.exe -u root flag
+wsl.exe -- bash -lc 'rm -rf /tmp/mtu_test && git clone https://github.com/NelTan21/ClaudeCode.git /tmp/mtu_test 2>&1'   #Test clone through WSL with lowered MTU to exercise the network path
+wsl.exe -- bash -lc 'ls /tmp/mtu_test 2>&1; echo "---"; cd /tmp/mtu_test && git log --oneline -3 2>&1; echo "---"; git -C /tmp/mtu_test status 2>&1'    #Verify the test clone actually completed successfully
+wsl.exe -- bash -lc 'cd /tmp/mtu_test && git checkout -b mtu-test-branch && echo "mtu test $(date)" >> mtu_test_file.txt &&     
+   git add mtu_test_file.txt && git -c user.name=test -c user.email=test@test.com commit -m "mtu test" && git push origin
+   mtu-test-branch 2>&1'   # Test an actual push through WSL with lowered MTU using a disposable branch
+wsl.exe -- bash -lc 'cd /tmp/mtu_test && git push origin --delete mtu-test-branch 2>&1; cd /; rm -rf /tmp/mtu_test'     # Delete the disposable test branch on GitHub and remove local temp clone
+# Edit file
+nvim \\wsl.localhost\Ubuntu\etc\wsl.conf
+###### Workaround Explanation ######
+  # - /d/Claude/Claude Code = Git Bash on Windows (native Windows networking, no WSL involved at all)
+  # - /mnt/d/Claude/Claude Code = the same folder, accessed from inside WSL2 (goes through WSL's virtual NIC, eth0)
 
-# Verification:
-ip link show eth0 | grep mtu             # confirm the interface picked up mtu 1400
-git config --get http.version            # confirm HTTP/1.1 is set
-git config --get http.postBuffer         # confirm postBuffer is set
-git fetch origin && git diff main origin/main   # confirm local == remote after a push
+  # The push I just ran went through Git Bash (/d/), which never touches WSL's network stack — so it was never exposed to the MTU    
+  # problem in the first place. It "worked" because it sidestepped WSL entirely, not because /d/ contains some fix.
+
+  # The actual fix — eth0 MTU clamped to 1400 via /etc/wsl.conf, plus http.version = HTTP/1.1 and http.postBuffer in ~/.gitconfig —  
+  # lives inside WSL and only matters if you're pushing from /mnt/d/... in a WSL bash session. If you stick to Git Bash on /d/, you  
+  # don't need it at all; if you push from WSL, that's when the MTU/HTTP1.1 workaround is what saves you.
+# ===================================================================
+
+
+git ls-remote origin; 
+echo "---"; git status -sb        # Verify remote now has the pushed branch
+git fetch origin; 
+echo "--- local vs remote ---"; 
+git rev-parse main; 
+git rev-parse origin/main; 
+echo "--- diff (should be empty) ---"; 
+git diff main origin/main; 
+echo "--- log ---"; 
+git log --oneline -5
+
+wsl.exe -- bash -lc gh api repos/NelTan21/ClaudeCode/commits/main --jq ".sha, .commit.message" 2>&1; 
+echo "---files---"; 
+gh api repos/NelTan21/ClaudeCode/contents/ --jq ".[].name" 2>&1  # Verify repo contents and latest commit via GitHub API
+wsl.exe -- bash -lc "gh api repos/NelTan21/ClaudeCode/actions/runs --jq '.total_count, .workflow_runs[0].status, 
+     .workflow_runs[0].conclusion' 2>&1" # Check GitHub runs, workflows, and actions
+
+#Learn how to Gate pushes to GH
