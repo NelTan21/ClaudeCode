@@ -185,8 +185,13 @@ cat .gitignore          # add files to ignore
         *.txt -> wildcard to ignore files with .txt suffix
         !/important.txt -> don't ignore file
                 # Order matters, if wildcard and negation were reversed then negation would be overridden
-                
-                
+
+# WHAT TO IGNORE
+        # Ignore things that can be generated (e.g. compiled code, minified files, etc.)
+        # Ignore dependencies (e.g. node_modules, venv, packages, etc.)
+        # Ignore things that are personal or specific to how you like to work (e.g. editor settings)
+        # Ignore things that are sensitive or dangerous (e.g. .env files, passwords, API keys, etc.)                
+
 # ===================================================================
 # Notes: 
 # ===================================================================
