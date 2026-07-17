@@ -157,3 +157,45 @@ print(front_wall.get_defense())
         self.__balance -= amount Abstraction - Similar to encapsulation but differs on how it is worked with.
 # Abstraction works towards how the product is presented. Reduces what the caller needs to know.
 # Encapsulation works towards how the product is handled. Reduces what the caller needs to touch.
+
+# ---------------------------------------------------------------------------
+# Classes in object-oriented programming are all about grouping data and behavior in one place: an object.
+# Functional programmers tend to think of their code as inputs and outputs, and how those inputs and outputs transition the world from one state to the next
+
+# ---------------------------------------------------------------------------
+# Inheritance - Allows propagation of constructors and methods from a reference/parent class
+# These inherits allows for more fine-tuned downstream models of a class
+class Aircraft: #Parent Class
+    def __init__(self, height: int, speed: int) -> None:
+        self.__height = height # Private Attribute -> needs a getter method as done below
+        self.speed = speed # Public Attribute -> accessible by the inheritors within their own class
+
+    def fly_up(self) -> None:
+        self.__height += self.speed
+# Its good practice to have a getter method for each defined attribute of your parent class
+# This is so that your inheritors have a method to call for the attributes inherited from the parent
+    def get_height(self):
+        return self.height
+
+# In most cases for practicality and practice of proper encapsulation, your attributes should be private
+# Below is the sample of the getter method in the event that the speed attribute becomes private
+# A getter method is useful because private attributes are prefixed with two underscores __
+# These 2 underscores trigger a name-mangling behavior in python
+# Name-Mangling example: Helicopter calling self.__height would call it as _Helicopter__height instead
+# You will encounter the nasty error of _Helicopter__height attribute does not exist
+
+    # def get_speed(self):
+        # return self.speed
+
+
+class Helicopter(Aircraft): # Child Class Referencing the parent in enclosed parenthesis
+    def __init__(self, height: int, speed: int) -> None:
+        super().__init__(height, speed) # super() method returns a referenced constructor or method
+        self.direction = 0
+
+    def rotate(self) -> None:
+        self.direction += 90
+# A good child class is like a specific sub-category of the parent class
+# Tiger inherits from Feline inherits from Animal inherits from LivingThing.
+
+
