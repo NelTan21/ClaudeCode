@@ -1,0 +1,93 @@
+dd       cut the current line
+3dd      cut 3 lines starting at the cursor
+dj       cut current line + line below
+dk       cut current line + line above
+p        paste after the cursor / below the current line
+P        paste before the cursor / above the current line
+yy       copy the current line
+3yy      copy 3 lines
+V        enter visual line mode
+j/k      extend selection down/up
+d        cut the selection
+y        copy the selection
+p / P    paste after / before
+u        undo
+Ctrl+r   redo
+:qa      quit all
+:wq      write and quit
+:w       write
+:q!      quit without saving
+Ctrl+v   enter visual block mode
+Ctrl+c   copy selection in visual mode
+Ctrl+x   cut selection in visual mode
+Ctrl+v   paste selection in visual mode
+:%s/\r$//g Remove trailing ^M from pasted windows lines
+
+-- Movement --
+w / b / e     jump to next / previous / end of word
+0 / ^ / $     start of line / first non-blank / end of line
+gg / G        top / bottom of file
+{ / }         jump by paragraph/block
+%             jump to matching ( { [
+Ctrl+d/Ctrl+u half-page down/up
+f<char>       jump to next occurrence of a character on the line
+t<char>       jump to just before next occurrence of a character
+;             repeat last f/t
+
+-- Editing beyond dd/yy/p --
+ci"           change inside quotes (works with ' ( [ { too)
+di(           delete inside parens
+da{           delete a block including the braces
+yiw           yank inner word
+.             repeat last change
+>> / <<       indent / outdent line
+J             join current line with the next
+~             toggle case of character under cursor
+
+-- Search & replace --
+/pattern      search forward, n/N repeat forward/backward
+:%s/old/new/g replace all occurrences in file
+:%s/old/new/gc replace all, confirm each one
+*             search for word under cursor, forward
+
+-- Macros --
+qa ... q      record macro into register a
+@a            replay macro a
+5@a           replay macro a 5 more times
+@@            repeat last macro
+
+-- Buffers / windows / tabs --
+:e <file>     open another file without leaving nvim
+:ls           list open buffers
+:b <number>   switch to buffer number
+:bnext/:bprev cycle buffers
+:sp / :vsp    split window horizontal / vertical
+Ctrl+w h/j/k/l move between splits
+:tabnew       new tab
+
+-- Marks & jumps --
+ma            set mark a
+`a            jump to mark a
+Ctrl+o/Ctrl+i back/forward through jump history
+
+-- Telescope (fuzzy finder, leader = space) --
+<space>ff     find files
+<space>fg     live grep (search text across files)
+<space>fb     list open buffers
+<space>fh     search help tags
+
+-- LSP (lua_ls, pyright) --
+gd            go to definition
+gD            go to declaration
+gr            find references
+K             hover docs
+<space>rn     rename symbol
+<space>ca     code action
+[d / ]d       previous / next diagnostic
+<space>e      show diagnostic detail for current line
+
+-- Completion (nvim-cmp, insert mode) --
+Tab / S-Tab   next / previous completion item
+Enter         confirm selection
+Ctrl+Space    force open completion menu
+

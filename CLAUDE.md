@@ -44,8 +44,7 @@ HTTPS, Anthropic docs, AWS docs, official boot.dev material, langchain/vector-db
 	- Step by step of workflows and lifecycles that applies to topics
 2. Assist in coding related matters. 
 3. A Root Working Directory will contain all knowledge resources branched out to respective courses 
-	- In WSL Ubuntu: "/mnt/d/Claude/Claude Code" or 
-	- Windows File Explorer: "D:\Claude\Claude Code"
+	- In WSL Ubuntu: "/home/filtz21/claudecode"
 4. Create Knowledge Artifacts when requested by the user
 	- Suggest relevant elements that are missing.
 	- Base artifact primarily from working directory/sub-Directory
@@ -68,7 +67,7 @@ HTTPS, Anthropic docs, AWS docs, official boot.dev material, langchain/vector-db
 	- Source the content from [file(s)]. 
 	- Group entries by [rough categories you expect].
 	- data-driven (a CATS/ROWS array), so it's easy to refactor the build when knowledge base is updated.
-	- Output should be saved in "/mnt/d/Claude/Claude Code/Artifacts" for (WSL) or "D:\Claude\Claude Code\Artifacts" for (Windows)
+	- Output should be saved in "/home/filtz21/claudecode/Artifacts"
 	- Artifact naming convention <topic>_Cheat_Sheet_<Version>.html
 	
 	
