@@ -64,6 +64,13 @@ qa ... q      record macro into register a
 :sp / :vsp    split window horizontal / vertical
 Ctrl+w h/j/k/l move between splits
 :tabnew       new tab
+gt            go to next tab
+gT            go to previous tab
+{n}gt         go directly to tab number n (e.g. 2gt jumps to tab 2)
+:tabn/:tabp   next / previous tab (command form of gt/gT)
+:tabc         close current tab
+:tabo         close all tabs except the current one
+:tabs         list all open tabs and their windows
 
 -- Marks & jumps --
 ma            set mark a
@@ -90,4 +97,57 @@ K             hover docs
 Tab / S-Tab   next / previous completion item
 Enter         confirm selection
 Ctrl+Space    force open completion menu
+
+-- Class/method blocks (Python methods are separated by blank lines, so paragraph motions = method motions) --
+vip           select inner paragraph (whole method body)
+dap           delete a method block including its trailing blank line
+>ip / <ip     indent / outdent a whole method at once
+
+-- Folding (collapse classes you're not editing) --
+zf<motion>    create a fold over that block (e.g. zfip)
+za            toggle fold open/closed under cursor
+zR / zM       open all folds / close all folds
+
+-- Tweaking values fast (e.g. num_arrows, use_arrows(3)) --
+Ctrl+a/Ctrl+x increment / decrement the number under the cursor
+
+-- Misc navigation --
+gf            open the file path under the cursor
+`[ / `]       jump to start / end of last yanked or changed text
+zz / zt / zb  center / scroll current line to top / bottom
+gv            reselect last visual selection
+
+-- OOP/inheritance workflow (uses LSP keymaps above) --
+gd on super().__init__(...)   jump to the parent class's __init__
+gr on a parent method         find every subclass call site (the "gateway method" pattern)
+<space>fg                     grep across activity + test file without manual :e
+
+-- More mobility: screen & file navigation --
+H / M / L     jump to top / middle / bottom of the visible screen
+Ctrl+f/Ctrl+b full page down / up
+Ctrl+e/Ctrl+y scroll the view one line down / up without moving the cursor
+W / B / E     jump by WORD (punctuation-inclusive) instead of word — skips over target.get_name() in one hop
+gj / gk       move by display line instead of file line (useful on wrapped comment lines)
+{number}G     jump straight to a line number (e.g. 33G)
+Ctrl+^        toggle to the alternate file (e.g. flip between inheritance.py and inheritance_test.py)
+gi            re-enter insert mode at the last place you were inserting
+
+-- System clipboard setup (WSL) --
+"+yip         yank inner paragraph into the SYSTEM clipboard (register +)
+"+yy          yank current line into the system clipboard
+"+y           (visual mode) yank selection into the system clipboard
+"+p           paste from the system clipboard into nvim
+-- plain yy/yip/p only fill nvim's internal register — other apps can't see it.
+-- "+ routes through xclip to the shared/Windows clipboard instead.
+
+Setup steps (one-time, only needed if the commands above don't work):
+1. sudo apt install xclip           -- installs the clipboard bridge tool
+2. echo $DISPLAY                    -- should print something like :0 (WSLg X server); if empty, clipboard bridging won't work
+3. nvim --headless -c 'checkhealth provider' -c 'qa!'   -- confirms nvim found xclip (look for "Clipboard tool found: xclip")
+-- no init.lua changes needed — nvim auto-detects xclip once it's installed and DISPLAY is set.
+
+-- Visual block mode in VS Code's integrated terminal --
+-- Ctrl+v and Ctrl+q are both intercepted by VS Code (paste / quick open)
+-- before they reach nvim, so init.lua remaps block-visual mode instead:
+<space>v      enter visual block mode (custom leader mapping, replaces Ctrl+v/Ctrl+q)
 
