@@ -33,7 +33,8 @@ print(f"Starting Asteroids with pygame version: {pygame.version.ver}")
 	# Hello from the pygame community. https://www.pygame.org/contribute.html
 	# Starting Asteroids with pygame version: 2.6.1
 
-
+# Created Logging Code: See ./logger.py
+# Added ./game_state.json1 to .gitignore
 
 
 
