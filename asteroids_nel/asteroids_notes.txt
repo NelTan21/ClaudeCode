@@ -1,0 +1,233 @@
+====================================================================
+ASTEROIDS PROJECT — KNOWLEDGE RECALL NOTES
+Concepts clarified while debugging imports, inheritance, and pygame
+====================================================================
+
+
+--------------------------------------------------------------------
+1. PYTHON IMPORTS — WHAT CAN AND CAN'T BE IMPORTED
+--------------------------------------------------------------------
+
+RULE: only TOP-LEVEL names in a file are importable — classes,
+module-level functions, module-level variables/constants.
+
+NOT importable directly:
+  - Methods defined INSIDE a class body (e.g. `draw`, `update`).
+    They aren't top-level names in the file; they only exist as
+    attributes of the class (CircleShape.draw), not as standalone
+    names you can `from module import draw`.
+  - Variables created INSIDE a function. e.g. `screen` in main.py
+    is created inside `def main():` — it only exists while main()
+    is running, and is never a module-level name. `from main import
+    screen` is invalid for this reason, not just bad style.
+
+KEY INSIGHT: importing a CLASS brings in ALL of its methods
+automatically, bundled together. You never import methods
+separately — that's the entire point of a class (a package deal).
+  from circleshape import CircleShape   # correct
+  from circleshape import draw          # invalid — draw isn't a
+                                         # top-level name in the file
+
+IMPORT vs PARAMETER PASSING — two different mechanisms:
+  - IMPORT = a name becomes permanently referenceable in a file,
+    starting when that file loads.
+  - PARAMETER = a value is handed across a function call boundary
+    at the MOMENT of the call, regardless of which file the
+    function/caller live in. No import needed for this.
+  Example: `screen` is created in main.py inside main(), then
+  passed as an argument: `Player1.draw(screen)`. player.py's
+  `draw(self, screen)` receives it as a parameter — it never
+  needed `from main import screen`.
+
+CIRCULAR IMPORTS: if file A imports from file B, and file B also
+imports from file A, Python chokes trying to fully load either one
+first. Fix: only import a name into a file if that file's code
+actually references it somewhere. (Root cause of an early bug:
+circleshape.py and player.py both had `from main import main`
+despite never calling `main()` — pure dead weight that also broke
+the whole program.)
+
+RULE OF THUMB: before adding an import, ask "does this file's code
+literally use this name anywhere below the import line?" If not,
+delete the import.
+
+
+--------------------------------------------------------------------
+2. CLASS INHERITANCE — METHODS VS ATTRIBUTES (the big one)
+--------------------------------------------------------------------
+
+METHODS are inherited automatically the INSTANT a class is defined:
+    class Asteroid(CircleShape):
+This one line alone gives Asteroid access to every method
+CircleShape has (draw, update, etc.) — no code needs to run, no
+constructor needs to be called. It happens at class-definition time.
+
+ATTRIBUTES work completely differently. A brand-new instance has
+NO instance attributes at all until some code actually executes
+`self.x = value` against it. Nothing is pre-loaded or "inherited
+in the background" the way methods are.
+
+super().__init__(x, y, radius) is what MAKES that code run:
+  - It executes the PARENT's __init__ method body, against your
+    object (self), using the values you hand it.
+  - This is not "loading defaults" — it's literally running the
+    parent's statements right now:
+        self.position = pygame.Vector2(x, y)   # uses your x, y
+        self.velocity = pygame.Vector2(0, 0)    # hardcoded, ignores
+                                                 # your arguments entirely
+        self.radius = radius                    # uses your radius
+  - Note self.velocity isn't influenced by anything you passed in —
+    it's just a line of parent code that always runs the same way.
+
+DATA FLOW DIRECTION — only goes ONE way, subclass → parent:
+    Asteroid(100, 200, 20)
+        -> Asteroid.__init__(self, x=100, y=200, radius=20)   [your own signature]
+        -> super().__init__(x, y, radius)   [you PASS/FORWARD these down]
+        -> CircleShape.__init__ runs, mutates self
+  __init__ never returns anything (implicitly returns None).
+  "Returned" is the WRONG word here — return means a value comes
+  back out to be caught (`result = func()`). PASS / FORWARD is
+  correct — you're relaying a value you already have onward, with
+  nothing coming back.
+
+OVERRIDING vs PARAMETERIZING — a real distinction:
+  - OVERRIDING = redefining a method's actual LOGIC (e.g. Asteroid
+    writing its own draw() that replaces CircleShape's formula).
+  - Supplying different VALUES to the same unchanged parent formula
+    is NOT overriding — it's just normal parameterization.
+  - Real overriding danger example (an actual bug hit in this
+    project): if child code runs `self.position = (x, y)` AFTER
+    calling super().__init__(), that DOES overwrite what the
+    parent just set — replacing a proper pygame.Vector2 with a
+    plain tuple that doesn't support Vector2 math (breaks `+=`).
+
+FINAL STATE: once all __init__ code (parent's + child's) has run,
+there is ONE flat attribute list on the instance. No separate
+"parent attributes" vs "child attributes" — whichever assignment
+ran LAST for a given name wins. This is also why a subclass
+instance genuinely IS-A parent instance (isinstance(asteroid,
+CircleShape) is True) — inheritance is additive on a real base
+object, not a reference to something else at a distance.
+
+
+--------------------------------------------------------------------
+3. ASSIGNMENT (=) VS ACCUMULATION (+=) — real bug hit
+--------------------------------------------------------------------
+
+Bug found in player.py:
+    def rotate(self, dt):
+        self.rotation = PLAYER_TURN_SPEED * dt   # WRONG
+
+Since PLAYER_TURN_SPEED and dt are roughly constant every frame,
+this line resets self.rotation to nearly the same value every
+single frame — it never builds on the previous value, so the ship
+never visibly kept turning past a tiny fixed offset.
+
+FIX: use += so each frame's turn amount ADDS onto the existing
+rotation, same pattern as movement:
+    self.rotation += PLAYER_TURN_SPEED * dt
+    self.position += rotated_with_speed_vector   # (move() already did this right)
+
+RULE: whenever a value needs to build up frame over frame (angle,
+position, score, timers), it needs +=, not =. Plain = throws away
+history and pins the value to whatever that frame calculates.
+
+
+--------------------------------------------------------------------
+4. PYGAME SPRITE GROUPS
+--------------------------------------------------------------------
+
+A pygame.sprite.Group is an ITERABLE CONTAINER — conceptually just
+like a list of objects. `for obj in some_group:` works exactly like
+looping a plain list. Nothing magic about the looping part.
+
+What IS special about Group:
+  a) Membership is automatic via a `containers` class attribute:
+        Player.containers = (updatable, drawable)
+     CircleShape.__init__ checks `hasattr(self, "containers")` and
+     if present, adds the new instance to those groups automatically.
+
+  b) ORDER MATTERS: `Player.containers = (...)` must be set BEFORE
+     any `Player(...)` instances are created. The containers check
+     happens ONLY at construction time — an instance created before
+     `.containers` was assigned never joins the group, silently.
+
+  c) group.update(*args) is a built-in shortcut that automatically
+     calls .update(*args) on every member — replaces manually
+     calling .update() on every single object by name.
+
+  d) group.draw(surface) is ALSO built-in, but DON'T use it here —
+     it expects each sprite to have .image and .rect attributes
+     (the standard pygame sprite pattern), which CircleShape/Player/
+     Asteroid don't have. Instead, loop manually and call each
+     object's own custom draw method:
+        for obj in drawable:
+            obj.draw(screen)
+     This is why the assignment phrased update() and draw() usage
+     differently — update() leans on the built-in fan-out, draw()
+     needs a manual loop because of the custom draw(self, screen)
+     signature this project uses.
+
+
+--------------------------------------------------------------------
+5. RENDER LOOP ORDER
+--------------------------------------------------------------------
+
+Correct order, every frame:
+    1. screen.fill("black")      # clear the previous frame
+    2. draw everything for this frame (player, asteroids, etc.)
+    3. pygame.display.flip()     # present the finished frame
+
+Bug hit: draw() was called BEFORE fill() and flip(). Sequence was
+draw -> fill -> flip, so fill() painted over the just-drawn objects
+before flip() ever displayed them — result was a plain black screen
+even though drawing logic was otherwise correct.
+
+Related gotcha: after fixing the order, screen.fill("white") was
+left in from testing, and the triangle is drawn in "white" too —
+a white shape on a white background is invisible even with 100%
+correct logic. Always sanity-check fill color vs draw color.
+
+
+--------------------------------------------------------------------
+6. UNDEFINED NAME BUGS — a recurring pattern to watch for
+--------------------------------------------------------------------
+
+Several bugs in this project came from referencing a bare name
+inside a method that was never actually defined in that method's
+scope (not a parameter, not a local variable, not a self.attribute):
+
+  - super().__init__(x, y, radius) failed once when Player's
+    __init__ only accepted (self, x, y) — `radius` didn't exist
+    anywhere in scope.
+  - Asteroid.draw() referenced a bare `radius` instead of
+    `self.radius` — draw()'s only parameters are (self, screen),
+    so `radius` isn't defined anywhere in that method.
+
+CHECKLIST when a NameError shows up: for the offending name, ask —
+is it a parameter of this exact method? A local variable assigned
+earlier in this exact method? Or does it need to be `self.<name>`
+because it's an attribute set elsewhere (e.g. in __init__)?
+
+
+--------------------------------------------------------------------
+7. STILL OPEN — asteroids.py (as of this note)
+--------------------------------------------------------------------
+
+Identified but not yet fixed at time of writing:
+
+  1. `self.position = (x, y)` in Asteroid.__init__ overwrites the
+     proper pygame.Vector2 that CircleShape.__init__ already
+     created, replacing it with a plain tuple. This breaks
+     update()'s `self.position += self.velocity * dt`, since a
+     tuple can't be added to a Vector2 with +=.
+     FIX: delete this line — CircleShape.__init__ already handles
+     self.position correctly via super().__init__(x, y, radius).
+
+  2. self.velocity does NOT need to be re-initialized in Asteroid's
+     own constructor — CircleShape.__init__ already sets it to
+     Vector2(0, 0) via the super().__init__() call.
+
+  3. Asteroid.draw() uses a bare `radius` name that doesn't exist
+     in that method's scope — should be `self.radius`:
+        pygame.draw.circle(screen, "white", self.position, self.radius, LINE_WIDTH)

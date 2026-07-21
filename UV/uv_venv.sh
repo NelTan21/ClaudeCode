@@ -16,7 +16,7 @@ uv python uninstall <version>	# Removes an installed Python interpreter version 
 python3 -m venv .venv
 source .venv/bin/activate   # Linux/WSL
 pip install requests
-
+print(f"Starting Asteroids with pygame version: {pygame.version.ver}")
 filtz21@Panda2:~/claudecode/asteroids_nel$ uv venv
 	# Using CPython 3.13.14
 	# Creating virtual environment at: .venv
