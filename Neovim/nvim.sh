@@ -39,6 +39,7 @@ ci"           change inside quotes (works with ' ( [ { too)
 di(           delete inside parens
 da{           delete a block including the braces
 yiw           yank inner word
+yaw           yank a word (includes trailing whitespace/punctuation)
 .             repeat last change
 >> / <<       indent / outdent line
 J             join current line with the next
@@ -49,6 +50,9 @@ J             join current line with the next
 :%s/old/new/g replace all occurrences in file
 :%s/old/new/gc replace all, confirm each one
 *             search for word under cursor, forward
+#             search for word under cursor, backward
+g* / g#       same as */#, but partial match instead of whole-word
+:noh          clear search highlighting (comes back on next search)
 
 -- Macros --
 qa ... q      record macro into register a

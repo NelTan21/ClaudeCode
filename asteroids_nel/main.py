@@ -1,0 +1,60 @@
+import pygame
+import sys
+from constants import SCREEN_WIDTH, SCREEN_HEIGHT, ASTEROID_MIN_RADIUS
+from logger import log_state, log_event
+from player import Player
+from asteroid import Asteroid 
+from asteroidfield import AsteroidField
+from circleshape import CircleShape
+from shot import Shot
+
+def main():
+    pygame.init()
+    screen = pygame.display.set_mode((SCREEN_WIDTH,SCREEN_HEIGHT)) # pygame.Surface
+    print(f"Starting Asteroids with pygame version: {pygame.version.ver}")
+    #Player1 = Player(0,1)
+    updatable = pygame.sprite.Group()
+    drawable = pygame.sprite.Group()
+    asteroids = pygame.sprite.Group()
+    shots = pygame.sprite.Group()
+    AsteroidField.containers = pygame.sprite.Group()
+    AsteroidField.containers = (updatable)
+    Asteroid.containers = (asteroids, updatable, drawable)
+    Player.containers = (updatable, drawable)
+    Shot.containers = (shots, updatable, drawable)
+    AsteroidField1 = AsteroidField()
+    Player1 = Player((SCREEN_WIDTH/2),(SCREEN_HEIGHT/2))
+    print(f"Screen width: {SCREEN_WIDTH}")
+    print(f"Screen height: {SCREEN_HEIGHT}")
+    game_clock = pygame.time.Clock() # pygame.Clock
+    dt = 0.0
+    while True:
+        log_state()
+        dt = game_clock.tick(60) / 1000
+        #print(dt) 
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return
+        screen.fill("black") # pygame.Rect
+        for shape in drawable:
+            shape.draw(screen)
+        updatable.update(dt)
+        for asteroid in asteroids:
+            if asteroid.collides_with(Player1) == True:
+                log_event("player_hit")
+                print("Game Over!")
+                sys.exit()
+            for shot in shots:    
+                if asteroid.collides_with(shot) == True:
+                    log_event("asteroid_shot")
+                    if asteroid.radius > ASTEROID_MIN_RADIUS:
+                        log_event("asteroid_split")
+                        asteroid.split()
+                    asteroid.kill()
+                    shot.kill()
+
+        pygame.display.flip() # None:
+
+
+if __name__ == "__main__":
+    main()

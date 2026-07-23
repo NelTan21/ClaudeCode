@@ -19,7 +19,7 @@ HTTPS, Anthropic docs, AWS docs, official boot.dev material, langchain/vector-db
 	- Build a Bookbot(Completed)
 	- Learn Git(Completed)
 	- Learn Object Oriented Programming(Ongoing)
-	- Build Asteroids(Not Started)
+	- Build Asteroids(Completed)
 	- Personal Project 1(Not Started)
 	- Learn Go(Not Started)
 	- Learn HTTP Clients(Not Started)
