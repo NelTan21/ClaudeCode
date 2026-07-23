@@ -231,3 +231,131 @@ Identified but not yet fixed at time of writing:
   3. Asteroid.draw() uses a bare `radius` name that doesn't exist
      in that method's scope — should be `self.radius`:
         pygame.draw.circle(screen, "white", self.position, self.radius, LINE_WIDTH)
+
+
+--------------------------------------------------------------------
+8. VECTOR2 MENTAL MODEL — POINT VS ARROW (the shoot() bug)
+--------------------------------------------------------------------
+
+A Vector2(x, y) is the SAME class either way — pygame doesn't tag it
+as "point" or "arrow." Which one it means is entirely determined by
+which variable holds it and how your code uses it:
+
+  - self.position  -> a POINT: "where this object currently is"
+  - self.velocity  -> an ARROW: "which way, and how far per step"
+
+KEY INSIGHT: a Point class with no .rotate()/.length() would just be
+dead coordinates — asking "which way does it point?" wouldn't even
+make sense. What makes Vector2 a vector is the OPERATIONS attached
+to the two numbers (rotate, length, +, * scalar), not merely having
+two numbers.
+
+ANGLE vs MAGNITUDE — two independent knobs, not two versions of the
+same thing (a conflation that caused real confusion mid-discussion):
+  - ANGLE/DIRECTION = which way the arrow points
+  - MAGNITUDE       = how LONG the arrow is (speed/strength)
+  .rotate(deg)   changes direction only, length is preserved.
+  v * scalar     changes length only, direction is preserved.
+  Example: Vector2(0,1).rotate(90) -> approx (-1, 0)  [still length 1,
+  just pointing a different way]. Then * 500 -> (-500, 0) [now length
+  500, same direction as the rotated vector — NOT the original (0,1)].
+
+POSITION + VELOCITY = new POSITION:
+  position is a point, velocity is an arrow. Adding them means "place
+  the arrow's tail at the point; the new point is wherever the
+  arrowhead lands." This is why Shot.update() moving every frame is
+  simply:
+        self.position += self.velocity * dt
+  Re-walking a little further along the same arrow, every frame.
+
+WHY WASD IS SPLIT THE WAY IT IS:
+  self.rotation is stored as a plain NUMBER (degrees), not a vector.
+  rotate(self, dt): self.rotation += PLAYER_TURN_SPEED * dt  — pure
+  angle bookkeeping, no vector math at all. But move() and shoot()
+  both need an actual ARROW to do position/velocity math, so both
+  independently do the SAME conversion:
+        Vector2(0, 1).rotate(self.rotation)
+  turning the stored angle NUMBER into a usable direction VECTOR.
+  Not a coincidence — it's "angle -> arrow" happening in two places
+  because two different actions (moving, shooting) each need it.
+
+INERT UNTIL UTILIZED — the core unlock of this whole discussion:
+  A locally computed vector (rotated_vector, rotated_with_shoot_
+  speed_vector, etc.) does NOTHING to the game by itself. It just
+  sits in memory as a value. Nothing changes until that value is
+  ASSIGNED into self.position or self.velocity — that assignment is
+  the moment "storage" becomes "effect."
+
+THE ACTUAL shoot() BUG, found by applying the above:
+  Original code:
+        new_shot.velocity = pygame.Vector2(0,1)
+        rotated_vector = new_shot.velocity.rotate(self.rotation)
+        rotated_with_shoot_speed_vector = rotated_vector * PLAYER_SHOOT_SPEED
+        new_shot.position += rotated_with_shoot_speed_vector
+  new_shot.velocity was set ONCE to the un-rotated (0,1) and never
+  touched again. The carefully rotated + scaled vector was instead
+  added directly to position — a single one-time nudge at creation.
+  Since Shot.update() re-reads self.velocity every frame
+  (position += velocity * dt), the shot would have kept drifting
+  straight down every frame regardless of which way the player was
+  actually facing when it fired.
+
+  FIX (current state of player.py shoot()):
+        new_shot.starting_v = pygame.Vector2(0,1)
+        new_shot.velocity = new_shot.starting_v.rotate(self.rotation) * PLAYER_SHOOT_SPEED
+        # new_shot.position += new_shot.velocity   (no longer needed —
+        #   Shot.update() applies velocity every frame on its own)
+  Now the ROTATED + SCALED vector itself becomes new_shot.velocity —
+  direction AND speed both land in the one attribute Shot.update()
+  actually reads every frame, instead of a one-time position nudge.
+
+
+--------------------------------------------------------------------
+9. CLASS vs INSTANCE — main.py collision check (single-player band-aid)
+--------------------------------------------------------------------
+
+Found while reviewing this line in main.py:
+    for asteroid in asteroids:
+        if asteroid.collides_with(Player1) == True:
+
+`Player1` is a hardcoded single instance, so this only ever checks
+collision against ONE specific player — a band-aid that silently
+breaks for any multi-player scenario.
+
+FIRST INSTINCT (corrected during discussion): swap `Player1` for
+the bare class name `Player`. This does NOT work and would crash.
+
+KEY INSIGHT (ties directly to section 2 above): calling/naming a
+CLASS does not run __init__ and does not populate instance
+attributes. `Player` is the blueprint; it has never had __init__
+executed against it, so it has no self.position, no self.radius.
+`Player1 = Player(x, y)` is what actually runs __init__ and
+produces an object WITH those attributes. `collides_with()` reads
+`other.position` — calling it with the bare class `Player` instead
+of an instance would throw an AttributeError, since the class
+itself never carries instance data, only instances do after
+construction.
+
+CORRECT FIX (same auto-membership pattern already used for
+Asteroid/Shot — see section 4): give Player its own sprite group so
+EVERY instance auto-joins it, then loop over that group instead of
+one hardcoded name.
+    players = pygame.sprite.Group()
+    Player.containers = (updatable, drawable, players)
+    ...
+    for asteroid in asteroids:
+        for player in players:
+            if asteroid.collides_with(player):
+                log_event("player_hit")
+                print("Game Over!")
+                sys.exit()
+Nested loop checks every asteroid against every player — same shape
+already used in main.py for the asteroid-vs-shot check sitting right
+next to it, just not yet applied to the player case as of this note.
+
+STATUS AS OF THIS NOTE: plan confirmed correct, NOT YET applied to
+main.py — still running the single-instance `Player1` version.
+
+MINOR STYLE NOTE (same file): `if x.collides_with(y) == True:` is
+redundant — collides_with() already returns a bool, so
+`if x.collides_with(y):` is equivalent and idiomatic.
