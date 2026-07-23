@@ -359,3 +359,74 @@ main.py — still running the single-instance `Player1` version.
 MINOR STYLE NOTE (same file): `if x.collides_with(y) == True:` is
 redundant — collides_with() already returns a bool, so
 `if x.collides_with(y):` is equivalent and idiomatic.
+
+
+--------------------------------------------------------------------
+10. MODULE ACCESS vs OBJECT ATTRIBUTES, and split() ENCAPSULATION
+--------------------------------------------------------------------
+
+BUG FOUND: `angle1 = asteroid.random.uniform(20,50)` in main.py.
+`random` is NOT an attribute of `asteroid` — nothing in Asteroid.
+__init__/CircleShape.__init__ ever runs `self.random = ...`, so
+`asteroid.random` doesn't exist (same undefined-name category as
+section 6). Would raise AttributeError on execution.
+
+WHY THE MIX-UP HAPPENED: the very next line,
+`asteroid.velocity.rotate(angle1)`, IS a legitimate dot-chain,
+because `velocity` really is an instance attribute set in
+CircleShape.__init__. It's easy to pattern-match that shape onto
+the wrong name.
+
+KEY DISTINCTION: `import random` at the top of a file makes `random`
+a directly usable name in that file's scope — a MODULE reference,
+not something living on any particular object. You call it as
+`random.uniform(...)` straight from module scope. Object dot-chains
+(`asteroid.velocity...`) only work for names that were actually
+assigned onto that specific instance via `self.name = ...`. Same
+"was this name ever actually defined here?" checklist as section 6,
+just applied to "module-level name" vs "instance attribute" instead
+of two instance attributes.
+  FIX: `angle1 = random.uniform(20,50)` — call the module directly,
+  no `asteroid.` prefix.
+
+split() ENCAPSULATION GAP: `asteroid.split()` was being called in
+main.py's collision loop, but `split` was never defined anywhere
+(not on Asteroid, not on CircleShape) — another undefined-name bug,
+this time an undefined METHOD instead of a variable/module. Notably,
+the full splitting logic (rotate two velocity vectors off the
+original, spawn two smaller Asteroids, assign their velocities) had
+already been hand-written directly inside main.py's loop, duplicating
+work that `split()` was supposed to own.
+
+FIX APPLIED — moved the logic INTO Asteroid as a real method,
+matching how draw()/update()/collides_with() are already structured
+(the object owns its own behavior; main.py just calls it):
+    # asteroid.py
+    def split(self):
+        angle1 = random.uniform(20,50)
+        velocity1 = self.velocity.rotate(angle1)
+        velocity2 = self.velocity.rotate(-angle1)
+        new_radius = self.radius - ASTEROID_MIN_RADIUS
+        new_asteroid1 = Asteroid(self.position.x, self.position.y, new_radius)
+        new_asteroid2 = Asteroid(self.position.x, self.position.y, new_radius)
+        new_asteroid1.velocity = velocity1 * 1.2
+        new_asteroid2.velocity = velocity2 * 1.2
+
+main.py's collision block simplified down to just:
+    if asteroid.collides_with(shot) == True:
+        log_event("asteroid_shot")
+        if asteroid.radius > ASTEROID_MIN_RADIUS:
+            log_event("asteroid_split")
+            asteroid.split()
+        asteroid.kill()
+        shot.kill()
+RULE OF THUMB: if a chunk of object-specific logic is being
+hand-computed inline in main.py's loop instead of called as a method,
+that's usually a sign it belongs INSIDE the class as its own method —
+same instinct as "why does draw() live on Asteroid instead of main.py
+drawing circles by hand."
+
+
+====================================================================
+COURSE STATUS: boot.dev "Build Asteroids" — COMPLETED.
+====================================================================
